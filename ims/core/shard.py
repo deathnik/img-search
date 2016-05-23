@@ -1,0 +1,2 @@
+class Shard(object):
+    pass

@@ -20,3 +20,7 @@ class Descriptor(object):
     def calculate_descriptor(self, img, *args, **kwargs):
         cropped_img = self._auto_crop(img)
         return self._calculate_descriptor(cropped_img, *args, **kwargs)
+
+    @abstractmethod
+    def to_json(self):
+        pass

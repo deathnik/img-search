@@ -36,3 +36,10 @@ class LocalBinaryPatternsDescriptor(Descriptor):
 
     def size(self):
         return self.num_points + 1
+
+    def to_json(self):
+        return {
+            'type': '.lbp',
+            'num_points': self.algo_num_points,
+            'radius': self.radius
+        }

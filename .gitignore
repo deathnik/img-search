@@ -75,3 +75,6 @@ target/
 # databsefiles
 *.png
 *.bmp
+
+# ipython notebooks
+*.ipynb

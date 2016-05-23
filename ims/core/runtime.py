@@ -8,8 +8,8 @@ from abc import ABCMeta, abstractmethod, abstractproperty
 
 class Runtime(object):
     __metaclass__ = ABCMeta
-    config_location = '/var/img-search/{}'
-    INTERESTING_FORMATS = ['png', 'jpg']
+    config_location = '/etc/img-search/{}'
+    INTERESTING_FORMATS = ['png', 'jpg', 'pgm']
 
     def _list_interesting_files(self, path):
         for base_path, _, child_files in os.walk(path):
@@ -29,10 +29,12 @@ class Runtime(object):
     def collect_db_info(self, stats_aggregator, **kwargs):
         pass
 
-    def save_db_config(self, config):
+    def save_db_config(self, config, path_to_data):
         js = config.to_json()
+        js['path_to_data'] = path_to_data
+        js = json.dumps(js)
         config_id = hashlib.sha224(js).hexdigest()
-        with open(self.config_location.format(config_id), 'rb') as f:
+        with open(self.config_location.format(config_id), 'wb') as f:
             f.write(js)
         return config_id
 
@@ -58,7 +60,7 @@ class SparkRuntime(Runtime):
     def make_batches(self, path_to_data, batch_size):
         files = list(self._list_interesting_files(path_to_data))
         partitions_count = int(math.ceil(len(files) * 1.0 / batch_size))
-        batches_rdd = self.sc.binaryFiles(','.join(files), minPartitions=partitions_count)
+        batches_rdd = self.sc.binaryFiles(','.join(files), minPartitions=partitions_count).repartition(partitions_count)
         return batches_rdd
 
     def collect_db_info(self, stats_aggregator, **kwargs):
@@ -72,8 +74,7 @@ class SparkRuntime(Runtime):
         return batches.map(lambda x: (x[0], norm(x[1])))
 
     def calculate_descriptors(self, batches, descriptors_cfg):
-        # TODO: make it
-        descriptor_calculator = lambda x: 1
+        descriptor_calculator = descriptors_cfg.get_descriptor_calculator()
         return batches.map(lambda x: (x[0], descriptor_calculator(x[1])))
 
     def save_descriptors(self, descriptors, output_path):
@@ -84,6 +85,6 @@ class SparkRuntime(Runtime):
                 base_path, file_name = path.rsplit('/', 1)
                 images.append(file_name)
                 data += descriptors_value
-            return json.dumps(images), data
+            yield (json.dumps(images), bytearray(data))
 
-        self._save(descriptors.foreachPartition(merge_images), path=output_path)
+        self._save(descriptors.mapPartitions(merge_images), path=output_path)

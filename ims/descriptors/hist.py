@@ -25,13 +25,13 @@ class HistDescriptor(Descriptor):
                                   range=(0, self.num_points + 1 - 5))
         # normalize the histogram
         hist = hist2.astype(np.float)
-        # hist = hist / sum(hist)
-        # hist /= (hist.sum() + self.eps)
-
-        statistics = np.asarray(
-            [])  # np.asarray([float(img.min()), float(img.max()), img.mean(), img.std(), img.var()])
-        # return the histogram of Local Binary Patterns
-        return np.concatenate((statistics, hist))
+        return hist
 
     def size(self):
         return self.num_points + 1
+
+    def to_json(self):
+        return {
+            'type': '.hist',
+            'num_points': self.num_points,
+        }

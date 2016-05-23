@@ -5,6 +5,9 @@ class DBConfig(object):
         self.db_info = None
         self.descriptors_cfg = None
 
+    def to_json(self):
+        return self.descriptors_cfg.to_json()
+
 
 class DB(object):
     def __init__(self, runtime, config=None):
@@ -26,7 +29,8 @@ class DB(object):
         descriptors = self.runtime.calculate_descriptors(batches, self.config.descriptors_cfg)
 
         self.runtime.save_descriptors(descriptors, output_path=output_path)
-        db_id = self.runtime.save_db_config(self.config)
+
+        db_id = self.runtime.save_db_config(self.config, path_to_data)
         return db_id
 
     def load_db_from_id(self, db_id):

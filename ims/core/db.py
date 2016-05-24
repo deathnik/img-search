@@ -59,13 +59,13 @@ class DB(object):
         db.config = db.runtime.get_serialized_config_for_id(db_id)
         return db
 
-    def search(self, image, region_coordinates):
+    def search(self, image, region_coordinates, search_config):
         if self.config.db_normalization is not None:
             image = self.runtime.normalize_one()
 
         region = self.runtime.crop_region(image, region_coordinates)
 
-        return self.runtime.search(self.config.descriptors_cfg, region, self.config.descriptors_cfg)
+        return self.runtime.search(self.config.descriptors_cfg, region, search_config)
 
     def get_id(self):
         js = json.dumps(self.to_json())

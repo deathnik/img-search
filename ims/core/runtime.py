@@ -3,6 +3,7 @@ import math
 import os
 
 from abc import ABCMeta, abstractmethod, abstractproperty
+from ims.core.search import Seeker
 
 
 class Runtime(object):
@@ -89,3 +90,17 @@ class SparkRuntime(Runtime):
             yield (json.dumps(images), bytearray(data))
 
         self._save(descriptors.mapPartitions(merge_images), path=output_path)
+
+    def _load(self, input_path):
+        return self.sc.newAPIHadoopFile(path=input_path,
+                                        inputFormatClass=self.output_format,
+                                        keyClass=self.key_format,
+                                        valueClass=self.value_format)
+
+    def search(self, input_path, search_descriptor, search_cfg):
+        seeker = Seeker(search_cfg)
+
+        db_rdd = self._load(input_path)
+        partial_results = db_rdd.mapPartitions(seeker.get_selector(search_descriptor))
+        resulting_rdd = partial_results.repartition(1).mapPartitions(seeker.get_results_combiner())
+        return resulting_rdd.collect()

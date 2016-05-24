@@ -16,17 +16,22 @@ ALLOWED_DESCRIPTOR_TYPES = {
     '.lbp': LocalBinaryPatternsDescriptor
 }
 
+ELEMENT_SIZE = 4
+
 
 class DescriptorConfig(object):
     def __init__(self):
         self.descriptor_suffix = '.hist'
         self.sizes = [[64, 64]]
         self.descriptor_params = {}
+        self.img_size = [384, 286]
 
     def _get_descriptor_template(self):
         return ALLOWED_DESCRIPTOR_TYPES[self.descriptor_suffix](*self.descriptor_params)
 
     def get_descriptor_calculator(self):
+        pack_template = self.get_pack_template()
+
         def calculate_descriptors(binary_img):
             descriptor_template = self._get_descriptor_template()
 
@@ -46,10 +51,43 @@ class DescriptorConfig(object):
                             res = descriptor.calculate_descriptor(img_part)
                             yield res
 
-            pack_template = '{}f'.format(descriptor_template.size())
             return ''.join(imap(lambda x: struct.pack(pack_template, *x), inner()))
 
         return calculate_descriptors
+
+    def get_pack_template(self):
+        return '{}f'.format(self._get_descriptor_template().size())
+
+    def get_descriptor_length(self):
+        return self._get_descriptor_template().size() * ELEMENT_SIZE
+
+    def get_offset(self, search_area, image_index):
+        offset = 0
+        size = list(search_area)
+        for sz in self.sizes:
+            if sz != size:
+                offset += self.img_size[0] / sz[0] * self.img_size[1] / sz[1]
+            else:
+                offset += search_area[0] * self.img_size[1] / sz[1] + search_area[1]
+                break
+        offset *= self.get_descriptor_length()
+
+        return self._full_image_descriptors_size() * image_index + offset
+
+    def _full_image_descriptors_size(self):
+        h, w = self.img_size
+        descriptors_count = 0
+        for sz in self.sizes:
+            x, y = sz
+            descriptors_count += h / x * w / y
+        return descriptors_count * self.get_descriptor_length()
+
+    def is_inside_image(self, coordinates, search_area_size):
+        h, w = self.img_size
+        x, y = coordinates
+        if 0 <= x <= h / search_area_size[0] and 0 <= y <= w / search_area_size[1]:
+            return True
+        return False
 
     def to_json(self):
         return {

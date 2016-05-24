@@ -1,4 +1,3 @@
-import hashlib
 import json
 import math
 import os
@@ -29,14 +28,16 @@ class Runtime(object):
     def collect_db_info(self, stats_aggregator, **kwargs):
         pass
 
-    def save_db_config(self, config, path_to_data):
-        js = config.to_json()
-        js['path_to_data'] = path_to_data
+    def save_db_config(self, js, db_id):
         js = json.dumps(js)
-        config_id = hashlib.sha224(js).hexdigest()
-        with open(self.config_location.format(config_id), 'wb') as f:
+        with open(self.config_location.format(db_id), 'wb') as f:
             f.write(js)
-        return config_id
+
+    def get_serialized_config_for_id(self, db_id):
+        with open(self.config_location.format(db_id), 'rb') as f:
+            js = f.read(-1)
+        js = json.loads(js)
+        return js
 
 
 class LocalRuntime(Runtime):

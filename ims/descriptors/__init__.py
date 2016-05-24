@@ -21,9 +21,10 @@ class DescriptorConfig(object):
     def __init__(self):
         self.descriptor_suffix = '.hist'
         self.sizes = [[64, 64]]
+        self.descriptor_params = {}
 
     def _get_descriptor_template(self):
-        return ALLOWED_DESCRIPTOR_TYPES[self.descriptor_suffix]()
+        return ALLOWED_DESCRIPTOR_TYPES[self.descriptor_suffix](*self.descriptor_params)
 
     def get_descriptor_calculator(self):
         def calculate_descriptors(binary_img):
@@ -55,3 +56,11 @@ class DescriptorConfig(object):
             'sizes': self.sizes,
             'desc': self._get_descriptor_template().to_json(),
         }
+
+    @classmethod
+    def from_json(cls, js):
+        instance = cls()
+        instance.sizes = js['sizes']
+        instance.descriptor_suffix = js['desc']['type']
+        instance.descriptor_params = js['desc']
+        return instance

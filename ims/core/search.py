@@ -39,19 +39,21 @@ class Seeker(object):
         pack_template = descriptor_cfg.get_pack_template()
 
         for x in xrange(0, elements_to_read):
-            data = shard_data[offset + x * descriptor_len, offset + (x + 1) * descriptor_len]
+            data = shard_data[offset + x * descriptor_len: offset + (x + 1) * descriptor_len]
+            if len(data) < descriptor_len:
+                continue
             yield (search_position[0], search_position[1] + x), struct.unpack(pack_template, data)
 
-    def _get_descriptors(self, i, search_position, descriptor_cfg, shard_data):
+    def _get_descriptors(self, i, search_position, scale, descriptor_cfg, shard_data):
         # fetches all halo descriptors
         for levels in xrange(-self.config.halo_size, self.config.halo_size + 1):
             new_search_pos = search_position[0] - levels, search_position[1] - self.config.halo_size
             for coordinates, value in self._one_line_descriptors(i, new_search_pos, descriptor_cfg, shard_data):
                 # check if we still inside db image
-                if descriptor_cfg.is_inside_image(coordinates):
+                if descriptor_cfg.is_inside_image(coordinates, scale):
                     yield coordinates, value
 
-    def get_selector(self, search_descriptor, search_position, descriptor_cfg):
+    def get_selector(self, search_descriptor, scale, search_position, descriptor_cfg):
         def selector(iterator):
             heap = Heap(capacity=self.config.selection_size)
             for shard in iterator:
@@ -59,7 +61,7 @@ class Seeker(object):
                 images_list = json.loads(images_list)
                 for i, image_name in enumerate(images_list):
                     for coordinates, descriptor_value in \
-                            self._get_descriptors(i, search_position, descriptor_cfg, packed_descriptors):
+                            self._get_descriptors(i, search_position, scale, descriptor_cfg, packed_descriptors):
                         dist = self.config.distance(search_descriptor, descriptor_value)
                         heap.push((dist, image_name, coordinates, descriptor_value))
 

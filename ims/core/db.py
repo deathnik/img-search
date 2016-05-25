@@ -60,7 +60,8 @@ class DB(object):
     @classmethod
     def load_db(cls, runtime, db_id):
         db = cls(runtime)
-        db.config = db.runtime.get_serialized_config_for_id(db_id)
+        serialized_config = db.runtime.get_serialized_config_for_id(db_id)
+        db.config = DBConfig.from_json(serialized_config)
         return db
 
     def _crop_region(self, image, upper_corner, lower_corner, scale):
@@ -76,13 +77,13 @@ class DB(object):
 
         upper_corner, lower_corner = region_coordinates
         area = (upper_corner[0] - lower_corner[0]) * (upper_corner[1] - lower_corner[1])
-        scale = min(self.config.descriptors_cfg.sizes, key=lambda x: abs(area - x[0] * x[1]))
+        scale = tuple(min(self.config.descriptors_cfg.sizes, key=lambda x: abs(area - x[0] * x[1])))
         image_region = self._crop_region(image, upper_corner, lower_corner, scale)
 
         search_descriptor = self.config.descriptors_cfg.calculate_one_descriptor(image_region)
         search_position = upper_corner[0] / scale[0], upper_corner[1] / scale[1]
 
-        return self.runtime.search(self.config.output_path, search_descriptor, search_position,
+        return self.runtime.search(self.config.output_path, search_descriptor, scale, search_position,
                                    self.config.descriptors_cfg, search_config)
 
     def get_id(self):

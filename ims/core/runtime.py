@@ -54,6 +54,7 @@ class LocalRuntime(Runtime):
 
 class SparkRuntime(Runtime):
     output_format = "org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat"
+    input_format = "org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat"
     key_format = "org.apache.hadoop.io.Text"
     value_format = "org.apache.hadoop.io.BytesWritable"
 
@@ -100,14 +101,15 @@ class SparkRuntime(Runtime):
 
     def _load(self, input_path):
         return self.sc.newAPIHadoopFile(path=input_path,
-                                        inputFormatClass=self.output_format,
+                                        inputFormatClass=self.input_format,
                                         keyClass=self.key_format,
                                         valueClass=self.value_format)
 
-    def search(self, input_path, search_descriptor, search_position, descriptor_cfg, search_cfg):
+    def search(self, input_path, search_descriptor, scale, search_position, descriptor_cfg, search_cfg):
         seeker = Seeker(search_cfg)
 
         db_rdd = self._load(input_path)
-        partial_results = db_rdd.mapPartitions(seeker.get_selector(search_descriptor, search_position, descriptor_cfg))
+        partial_results = db_rdd.mapPartitions(
+            seeker.get_selector(search_descriptor, scale, search_position, descriptor_cfg))
         resulting_rdd = partial_results.repartition(1).mapPartitions(seeker.get_results_combiner())
         return resulting_rdd.collect()

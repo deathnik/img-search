@@ -20,14 +20,14 @@ ELEMENT_SIZE = 4
 
 
 class DescriptorConfig(object):
-    def __init__(self):
-        self.descriptor_suffix = '.hist'
+    def __init__(self, descriptor_type='hist'):
+        self.descriptor_suffix = '.' + descriptor_type
         self.sizes = [[64, 64]]
         self.descriptor_params = {}
         self.img_size = [384, 286]
 
     def _get_descriptor_template(self):
-        return ALLOWED_DESCRIPTOR_TYPES[self.descriptor_suffix](*self.descriptor_params)
+        return ALLOWED_DESCRIPTOR_TYPES[self.descriptor_suffix](**self.descriptor_params)
 
     def get_descriptor_calculator(self):
         pack_template = self.get_pack_template()

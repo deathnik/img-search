@@ -23,9 +23,7 @@ class LocalBinaryPatternsDescriptor(Descriptor):
         lbp = feature.local_binary_pattern(image, self.algo_num_points,
                                            self.radius, method="uniform")
         # return lbp.ravel()
-        (hist, _) = np.histogram(lbp.ravel(),
-                                 bins=np.arange(0, self.num_points + 2),
-                                 range=(0, self.num_points + 1))
+        (hist, _) = np.histogram(lbp.ravel(), bins=self.num_points + 1)
 
         # normalize the histogram
         hist = hist.astype("float")

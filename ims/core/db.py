@@ -1,6 +1,10 @@
 import hashlib
 import json
+
+import cv2
+
 from ims.descriptors import DescriptorConfig
+from ims.util import crop_image
 
 
 class DBConfig(object):
@@ -59,13 +63,27 @@ class DB(object):
         db.config = db.runtime.get_serialized_config_for_id(db_id)
         return db
 
+    def _crop_region(self, image, upper_corner, lower_corner, scale):
+        if isinstance(image, basestring):
+            image = self.runtime.load_image(image)
+        # TODO: add normalize image, via normalize_one
+        image_part = crop_image(upper_corner[0], upper_corner[1], lower_corner[0], lower_corner[1], image)
+        return cv2.resize(image_part, scale)
+
     def search(self, image, region_coordinates, search_config):
         if self.config.db_normalization is not None:
             image = self.runtime.normalize_one()
 
-        region = self.runtime.crop_region(image, region_coordinates)
+        upper_corner, lower_corner = region_coordinates
+        area = (upper_corner[0] - lower_corner[0]) * (upper_corner[1] - lower_corner[1])
+        scale = min(self.config.descriptors_cfg.sizes, key=lambda x: abs(area - x[0] * x[1]))
+        image_region = self._crop_region(image, upper_corner, lower_corner, scale)
 
-        return self.runtime.search(self.config.descriptors_cfg, region, search_config)
+        search_descriptor = self.config.descriptors_cfg.calculate_one_descriptor(image_region)
+        search_position = upper_corner[0] / scale[0], upper_corner[1] / scale[1]
+
+        return self.runtime.search(self.config.output_path, search_descriptor, search_position,
+                                   self.config.descriptors_cfg, search_config)
 
     def get_id(self):
         js = json.dumps(self.to_json())

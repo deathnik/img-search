@@ -55,6 +55,9 @@ class DescriptorConfig(object):
 
         return calculate_descriptors
 
+    def calculate_one_descriptor(self, image_part):
+        return self._get_descriptor_template().calculate_descriptor(image_part)
+
     def get_pack_template(self):
         return '{}f'.format(self._get_descriptor_template().size())
 

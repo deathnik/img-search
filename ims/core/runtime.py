@@ -2,7 +2,10 @@ import json
 import math
 import os
 
-from abc import ABCMeta, abstractmethod, abstractproperty
+from abc import ABCMeta, abstractmethod
+
+import cv2
+
 from ims.core.search import Seeker
 
 
@@ -39,6 +42,10 @@ class Runtime(object):
             js = f.read(-1)
         js = json.loads(js)
         return js
+
+    @staticmethod
+    def load_image(image_path):
+        return cv2.imread(image_path, 1)
 
 
 class LocalRuntime(Runtime):
@@ -97,10 +104,10 @@ class SparkRuntime(Runtime):
                                         keyClass=self.key_format,
                                         valueClass=self.value_format)
 
-    def search(self, input_path, search_descriptor, search_cfg):
+    def search(self, input_path, search_descriptor, search_position, descriptor_cfg, search_cfg):
         seeker = Seeker(search_cfg)
 
         db_rdd = self._load(input_path)
-        partial_results = db_rdd.mapPartitions(seeker.get_selector(search_descriptor))
+        partial_results = db_rdd.mapPartitions(seeker.get_selector(search_descriptor, search_position, descriptor_cfg))
         resulting_rdd = partial_results.repartition(1).mapPartitions(seeker.get_results_combiner())
         return resulting_rdd.collect()

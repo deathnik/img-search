@@ -68,7 +68,7 @@ class Seeker(object):
 
         return selector
 
-    def get_merger(self):
+    def get_results_combiner(self):
         def merger(iterator):
             heap = Heap(capacity=self.config.selection_size)
             for item in iterator:

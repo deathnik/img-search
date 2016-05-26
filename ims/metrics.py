@@ -18,4 +18,4 @@ def hist_distance(h1, h2, power_=2):
                 val += availiable[j]
                 availiable[j] = 0
 
-    return dist
+    return -dist

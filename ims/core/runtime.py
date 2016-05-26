@@ -85,7 +85,7 @@ class SparkRuntime(Runtime):
 
     def calculate_descriptors(self, batches, descriptors_cfg):
         descriptor_calculator = descriptors_cfg.get_descriptor_calculator()
-        return batches.map(lambda x: (x[0], descriptor_calculator(x[1])))
+        return batches.map(lambda x: (x[0], descriptor_calculator(*x)))
 
     def save_descriptors(self, descriptors, output_path):
         def merge_images(iterator):

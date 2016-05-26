@@ -1,4 +1,10 @@
 import heapq
+import logging
+
+
+def debug_log(msg):
+    logger = logging.getLogger('pyspark')  # maybe you should use py4j
+    logger.debug(msg)
 
 
 def crop_image(x1, y1, x2, y2, img):

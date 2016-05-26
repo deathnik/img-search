@@ -6,7 +6,7 @@ from copy import deepcopy
 import cv2
 import numpy as np
 
-from ims.util import crop_image
+from ims.util import crop_image, debug_log
 
 from ims.descriptors.hist import HistDescriptor
 from ims.descriptors.lbp import LocalBinaryPatternsDescriptor
@@ -24,7 +24,7 @@ class DescriptorConfig(object):
         self.descriptor_suffix = '.' + descriptor_type
         self.sizes = [[64, 64]]
         self.descriptor_params = {}
-        self.img_size = [384, 286]
+        self.img_size = [286, 384]
 
     def _get_descriptor_template(self):
         return ALLOWED_DESCRIPTOR_TYPES[self.descriptor_suffix](**self.descriptor_params)
@@ -32,7 +32,7 @@ class DescriptorConfig(object):
     def get_descriptor_calculator(self):
         pack_template = self.get_pack_template()
 
-        def calculate_descriptors(binary_img):
+        def calculate_descriptors(image_name, binary_img):
             descriptor_template = self._get_descriptor_template()
 
             def inner():
@@ -49,6 +49,7 @@ class DescriptorConfig(object):
                         for j in range(0, img.shape[1] / h):
                             img_part = crop_image(w * i, h * j, w * (i + 1), h * (j + 1), img)
                             res = descriptor.calculate_descriptor(img_part)
+                            debug_log('image {} with pos {}:{} got descriptor: {}'.format(image_name, i, j, res))
                             yield res
 
             return ''.join(imap(lambda x: struct.pack(pack_template, *x), inner()))
@@ -64,17 +65,16 @@ class DescriptorConfig(object):
     def get_descriptor_length(self):
         return self._get_descriptor_template().size() * ELEMENT_SIZE
 
-    def get_offset(self, search_area, image_index):
+    def get_offset(self, search_area_size, search_position, image_index):
         offset = 0
-        size = list(search_area)
+        size = list(search_area_size)
         for sz in self.sizes:
-            if sz != size:
-                offset += self.img_size[0] / sz[0] * self.img_size[1] / sz[1]
+            if list(sz) != size:
+                offset += int(self.img_size[0] / sz[0]) * int(self.img_size[1] / sz[1])
             else:
-                offset += search_area[0] * self.img_size[1] / sz[1] + search_area[1]
+                offset += search_position[0] * int(self.img_size[1] / sz[1]) + search_position[1]
                 break
         offset *= self.get_descriptor_length()
-
         return self._full_image_descriptors_size() * image_index + offset
 
     def _full_image_descriptors_size(self):
@@ -82,7 +82,7 @@ class DescriptorConfig(object):
         descriptors_count = 0
         for sz in self.sizes:
             x, y = sz
-            descriptors_count += h / x * w / y
+            descriptors_count += int(h / x) * (w / y)
         return descriptors_count * self.get_descriptor_length()
 
     def is_inside_image(self, coordinates, search_area_size):

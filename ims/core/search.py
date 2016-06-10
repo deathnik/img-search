@@ -7,6 +7,30 @@ from ims.util import Heap, debug_log
 ELEMENT_SIZE = 4
 
 
+class _Selector(object):
+    def __init__(self, heap_size, name=''):
+        self.heap_size = heap_size
+        self.name = name
+
+    def __call__(self, iterator):
+        heap = Heap(capacity=self.heap_size)
+        for elem in iterator:
+            item = self.get_item(elem)
+            if item is None:
+                continue
+            popped = heap.push(item)
+            if popped is not None:
+                debug_log('Filtered out in {} : {}'.format(self.name, popped))
+
+        for item in sorted(heap.data()):
+            yield item
+
+    # reload this method for doing something
+    @staticmethod
+    def get_item(elem):
+        return elem
+
+
 class SearchConfig(object):
     def __init__(self, selection_size=10, halo_size=0, search_area_size=[64, 64]):
         self.selection_size = selection_size
@@ -31,6 +55,11 @@ class Seeker(object):
             config = SearchConfig()
 
         self.config = config
+
+    def _make_selector(self, get_item):
+        selector = _Selector(self.config.selection_size)
+        selector.get_item = get_item
+        return selector
 
     def _one_line_descriptors(self, i, search_position, descriptor_cfg, shard_data):
         # fetches data about one line in hallo
@@ -60,38 +89,26 @@ class Seeker(object):
                     yield coordinates, value
 
     def get_selector(self, search_descriptor, scale, search_position, descriptor_cfg):
-        def selector(iterator):
-            heap = Heap(capacity=self.config.selection_size)
-            for shard in iterator:
-                images_list, packed_descriptors = shard
-                images_list = json.loads(images_list)
-                for i, image_name in enumerate(images_list):
-                    debug_log('{} {}'.format(i, image_name))
-                    for coordinates, descriptor_value in \
-                            self._get_descriptors(i, search_position, scale, descriptor_cfg, packed_descriptors):
-                        debug_log('Fetched {} {} {}'.format(image_name, coordinates, descriptor_value))
+        def get_item(item):
+            images_list, packed_descriptors = item
+            images_list = json.loads(images_list)
+            for i, image_name in enumerate(images_list):
+                debug_log('{} {}'.format(i, image_name))
+                for coordinates, descriptor_value in \
+                        self._get_descriptors(i, search_position, scale, descriptor_cfg, packed_descriptors):
+                    debug_log('Fetched {} {} {}'.format(image_name, coordinates, descriptor_value))
+                    dist = self.config.distance(search_descriptor, descriptor_value)
+                    return dist, image_name, coordinates, descriptor_value
 
-                        dist = self.config.distance(search_descriptor, descriptor_value)
-                        popped = heap.push((dist, image_name, coordinates, descriptor_value))
-                        if popped is not None:
-                            debug_log('Filtered out {} with coordinates: {}:{} with descriptor value {} and dist'
-                                      .format(popped[1], popped[2][0], popped[2][1], popped[3], popped[0]))
+        return self._make_selector(get_item)
 
-            for item in sorted(heap.data()):
-                yield item
+    def get_selector_for_prepared_descriptors(self, search_descriptor):
+        def get_item(item):
+            image_name, (coordinates, descriptor_value) = item
+            dist = self.config.distance(search_descriptor, descriptor_value)
+            return dist, image_name, coordinates, descriptor_value
 
-        return selector
+        return self._make_selector(get_item)
 
     def get_results_combiner(self):
-        def merger(iterator):
-            heap = Heap(capacity=self.config.selection_size)
-            for item in iterator:
-                popped = heap.push(item)
-                if popped is not None:
-                    debug_log('Filtered out {} with coordinates: {}:{} with descriptor value {} and dist'.format(
-                        popped[1], popped[2][0], popped[2][1], popped[3], popped[0]))
-
-            for item in sorted(heap.data()):
-                yield item
-
-        return merger
+        return _Selector(self.config.selection_size)

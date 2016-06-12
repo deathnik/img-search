@@ -6,7 +6,7 @@ from ims.descriptors.base import Descriptor
 
 
 class LocalBinaryPatternsDescriptor(Descriptor):
-    def __init__(self, num_points=32, radius=4, **kwargs):
+    def __init__(self, num_points=32, radius=3, **kwargs):
         super(LocalBinaryPatternsDescriptor, self).__init__(**kwargs)
         self.algo_num_points = num_points
         self.num_points = 32 - 1

@@ -104,9 +104,9 @@ class Seeker(object):
 
     def get_selector_for_prepared_descriptors(self, search_descriptor):
         def get_item(item):
-            image_name, (coordinates, descriptor_value) = item
+            image_name, (coordinates, descriptor_value, _type) = item
             dist = self.config.distance(search_descriptor, descriptor_value)
-            return dist, image_name, coordinates, descriptor_value
+            return dist, image_name, coordinates, descriptor_value, _type
 
         return self._make_selector(get_item)
 
